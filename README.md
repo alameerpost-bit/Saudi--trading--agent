@@ -1,14 +1,43 @@
-# Saudi Trading Agent Backend v0.1
+# Saudi Trading Agent v0.1
 
-Backend proxy for testing SAHMK market-data access. It does not connect to a brokerage account and cannot submit orders.
+Arabic-first PWA frontend for the Saudi market, plus a Node.js/Express backend proxy for SAHMK market data.
 
-## Deploy on Render
-1. Create a new **Web Service** and connect the GitHub repository containing this folder, or deploy the backend source as a separate repository.
-2. Set the Root Directory to `backend` if deploying from the existing project repository.
-3. Runtime: Node. Build command: `npm install`. Start command: `npm start`.
-4. Add Environment Variables in Render:
-   - `SAHMK_API_KEY`: your private SAHMK key
-   - `ALLOWED_ORIGIN`: `https://alameerpost-bit.github.io`
-5. Deploy, then test `/api/health`, `/api/market/summary`, and `/api/quote/2222` on the service URL.
+## Current safety and data status
 
-Never commit `.env`, API keys, passwords, or OTPs. Keep the key only in Render Environment Variables. Confirm the provider's current endpoint, response schema, data delay, and display permissions before using the data for decisions.
+- The frontend is hosted separately on GitHub Pages.
+- The backend reads the SAHMK API key only from the server environment variable `SAHMK_API_KEY`.
+- The backend does not connect to a brokerage account and has no order-submission endpoint.
+- Automatic trading is disabled. No buy/sell entry signal should be generated from missing, stale, or unverified data.
+- The current frontend watchlist is local-only and does not yet consume the backend API.
+
+## Deploy the backend on Render
+
+The backend files (`server.js` and `package.json`) are in the repository root. Do not set a Root Directory such as `backend`.
+
+1. Create a Render **Web Service** and connect `alameerpost-bit/Saudi--trading--agent`.
+2. Runtime: **Node**.
+3. Root Directory: leave blank (repository root).
+4. Build command: `npm install`.
+5. Start command: `npm start`.
+6. Add these environment variables in Render:
+   - `SAHMK_API_KEY`: your private SAHMK API key.
+   - `ALLOWED_ORIGIN`: `https://alameerpost-bit.github.io`.
+7. Deploy and copy the public Render service URL.
+
+## Backend endpoints
+
+Replace `YOUR_RENDER_URL` with the deployed service URL:
+
+- `YOUR_RENDER_URL/api/health` — backend status and whether the key is configured.
+- `YOUR_RENDER_URL/api/market/summary` — market summary from SAHMK.
+- `YOUR_RENDER_URL/api/quote/2222` — quote test for symbol 2222 (Saudi Aramco).
+
+A successful health response does not prove market-data access. Test the summary and quote endpoints separately and verify each provider timestamp and delayed/realtime flag.
+
+## Security
+
+- Never commit `.env`, API keys, passwords, or OTPs.
+- Keep the SAHMK key only in Render Environment Variables.
+- Do not put the key in frontend JavaScript, GitHub Pages, screenshots, or chat messages.
+- Confirm the provider's current endpoint, response schema, data delay, and display permissions before using data for decisions.
+- Do not add brokerage credentials or order execution to this project without a separate, explicit security review and user approval.
