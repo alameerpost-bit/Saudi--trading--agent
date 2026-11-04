@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.SAHMK_API_KEY;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
-const BASE = 'https://www.sahmk.sa/api/v1';
+const BASE = 'https://api.sahmk.sa/api/v1';
 
 app.use(cors({ origin: ALLOWED_ORIGIN ? ALLOWED_ORIGIN.split(',').map(s => s.trim()) : false }));
 app.use(express.json());
