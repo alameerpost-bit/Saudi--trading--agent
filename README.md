@@ -1,30 +1,14 @@
-# وكيل التداول السعودي 0.1
+# Saudi Trading Agent Backend v0.1
 
-واجهة ويب عربية قابلة للتثبيت على iPhone (PWA) لمتابعة الأسهم السعودية وإدارة المخاطر.
+Backend proxy for testing SAHMK market-data access. It does not connect to a brokerage account and cannot submit orders.
 
-## الحالة الحالية
-- لوحة سوق توضح أن بيانات تاسي والأسعار الحية غير متصلة.
-- قائمة مراقبة تحفظ رموز الأسهم محليًا على الجهاز.
-- حاسبة تقديرية لحجم المركز والمخاطرة.
-- دعم أولي للعمل دون اتصال.
-- لا يوجد اتصال بالراجحي المالية أو تنفيذ أوامر.
-- لا توجد توصيات دخول فعلية في هذه النسخة.
+## Deploy on Render
+1. Create a new **Web Service** and connect the GitHub repository containing this folder, or deploy the backend source as a separate repository.
+2. Set the Root Directory to `backend` if deploying from the existing project repository.
+3. Runtime: Node. Build command: `npm install`. Start command: `npm start`.
+4. Add Environment Variables in Render:
+   - `SAHMK_API_KEY`: your private SAHMK key
+   - `ALLOWED_ORIGIN`: `https://alameerpost-bit.github.io`
+5. Deploy, then test `/api/health`, `/api/market/summary`, and `/api/quote/2222` on the service URL.
 
-## النشر على GitHub Pages
-1. فك ضغط الحزمة.
-2. افتح مستودعك الحالي على GitHub.
-3. اختر Add file ثم Upload files.
-4. ارفع محتويات المجلد مباشرة إلى جذر المستودع، وليس المجلد كطبقة إضافية.
-5. اضغط Commit changes.
-6. من Settings > Pages اختر Deploy from a branch، ثم main و /(root)، واحفظ.
-7. بعد اكتمال النشر افتح رابط Pages الذي يظهره GitHub.
-
-## التثبيت على iPhone
-1. افتح رابط الموقع المنشور في Safari.
-2. اضغط مشاركة.
-3. اختر Add to Home Screen ثم Add.
-
-## قبل إضافة توصيات فعلية
-يلزم مزود بيانات سوق سعودي موثوق ومرخّص، وخادم خلفي لحماية مفاتيح API، وإظهار مصدر كل سعر وتوقيته، واختبار تاريخي يشمل العمولات والانزلاق ومقارنة تاسي. لا تضع مفاتيح سرية في ملفات الواجهة أو المستودع العام.
-
-الحاسبة تقديرية وليست توصية استثمارية.
+Never commit `.env`, API keys, passwords, or OTPs. Keep the key only in Render Environment Variables. Confirm the provider's current endpoint, response schema, data delay, and display permissions before using the data for decisions.
