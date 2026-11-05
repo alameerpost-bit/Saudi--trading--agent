@@ -8,7 +8,7 @@ const API_KEY = process.env.SAHMK_API_KEY;
 const ARGAAM_API_KEY = process.env.ARGAAM_API_KEY;
 const ARGAAM_BASE = 'https://api-sandbox.argaam.com/api/v1.1';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
-const BASE = 'https://api.sahmk.sa/api/v1';
+const BASE = (process.env.SAHMK_BASE_URL || 'https://api.sahmk.sa/api/v1').replace(/\\/+$/, '');
 
 const allowedOrigins = new Set([
   'https://alameerpost-bit.github.io',
@@ -19,7 +19,7 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || allowedOrigins.has(origin)) return callback(null, true);
   return callback(null, false);
 } }));
-app.use(express.json());
+app.use(express.json());\napp.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
@@ -31,21 +31,67 @@ app.get('/api/health', (_req, res) => res.json({
 }));
 
 async function providerGet(path) {
-  if (!API_KEY) throw new Error('SAHMK_API_KEY is not configured');
-  const response = await fetch(`${BASE}${path}`, {
-    headers: { 'X-API-Key': API_KEY, 'Accept': 'application/json' }
-  });
+  if (!API_KEY) {
+    const error = new Error('SAHMK_API_KEY is not configured on the server.');
+    error.status = 503;
+    throw error;
+  }
+  let response;
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      headers: { 'X-API-Key': API_KEY, 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(15000)
+    });
+  } catch (cause) {
+    const error = new Error(cause?.name === 'TimeoutError'
+      ? 'SAHMK request timed out after 15 seconds.'
+      : 'Could not connect to the SAHMK API host.');
+    error.cause = cause;
+    throw error;
+  }
   const body = await response.text();
-  if (!response.ok) throw new Error(`SAHMK returned HTTP ${response.status}: ${body.slice(0, 300)}`);
-  try { return JSON.parse(body); } catch { throw new Error('SAHMK response was not valid JSON'); }
+  let parsed;
+  try { parsed = body ? JSON.parse(body) : {}; } catch { parsed = null; }
+  if (!response.ok) {
+    const providerMessage = parsed?.error?.message || parsed?.message || `SAHMK returned HTTP ${response.status}`;
+    const error = new Error(String(providerMessage).slice(0, 220));
+    error.status = response.status;
+    throw error;
+  }
+  if (parsed === null) throw new Error('SAHMK response was not valid JSON.');
+  return parsed;
 }
+
+app.get('/api/health/provider', async (_req, res) => {
+  try {
+    const data = await providerGet('/market/summary/?index=TASI');
+    res.json({
+      ok: true,
+      provider: 'SAHMK',
+      authenticated: true,
+      providerTimestamp: data.timestamp || null,
+      isDelayed: typeof data.is_delayed === 'boolean' ? data.is_delayed : null,
+      retrievedAt: new Date().toISOString(),
+      tradingEnabled: false
+    });
+  } catch (error) {
+    res.status(error.status === 503 ? 503 : 502).json({
+      ok: false,
+      provider: 'SAHMK',
+      authenticated: false,
+      providerStatus: error.status || null,
+      message: error.message,
+      tradingEnabled: false
+    });
+  }
+});
 
 app.get('/api/market/summary', async (_req, res) => {
   try {
-    const data = await providerGet('/market/summary/');
+    const data = await providerGet('/market/summary/?index=TASI');
     res.json({ provider: 'SAHMK', retrievedAt: new Date().toISOString(), data });
   } catch (error) {
-    res.status(502).json({ error: 'market_data_unavailable', message: error.message });
+    res.status(error.status === 503 ? 503 : 502).json({ error: 'market_data_unavailable', providerStatus: error.status || null, message: error.message });
   }
 });
 
@@ -56,7 +102,7 @@ app.get('/api/quote/:symbol', async (req, res) => {
     const data = await providerGet(`/quote/${encodeURIComponent(symbol)}/`);
     res.json({ provider: 'SAHMK', symbol, retrievedAt: new Date().toISOString(), data });
   } catch (error) {
-    res.status(502).json({ error: 'quote_unavailable', message: error.message });
+    res.status(error.status === 503 ? 503 : 502).json({ error: 'quote_unavailable', providerStatus: error.status || null, message: error.message });
   }
 });
 
