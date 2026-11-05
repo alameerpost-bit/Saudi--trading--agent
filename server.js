@@ -8,7 +8,7 @@ const API_KEY = process.env.SAHMK_API_KEY;
 const ARGAAM_API_KEY = process.env.ARGAAM_API_KEY;
 const ARGAAM_BASE = 'https://api-sandbox.argaam.com/api/v1.1';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
-const BASE = (process.env.SAHMK_BASE_URL || 'https://api.sahmk.sa/api/v1').replace(/\\/+$/, '');
+const BASE = (process.env.SAHMK_BASE_URL || 'https://api.sahmk.sa/api/v1').replace(/\/+$/, '');
 
 const allowedOrigins = new Set([
   'https://alameerpost-bit.github.io',
@@ -19,7 +19,8 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || allowedOrigins.has(origin)) return callback(null, true);
   return callback(null, false);
 } }));
-app.use(express.json());\napp.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+app.use(express.json());
+app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
