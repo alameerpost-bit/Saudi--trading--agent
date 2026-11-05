@@ -27,7 +27,7 @@ function render(){
   if(!symbols.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="أضف رمز سهم لمتابعته.";tr.append(td);body.append(tr);return;}
   symbols.forEach(symbol=>{
     const tr=document.createElement("tr"),q=quoteCache[symbol]?.data;
-    const values=[symbol,q?money(q.price):"—",q?(Number(q.change)>=0?"+":"")+money(q.change)+" ("+(Number(q.change_percent)>=0?"+":"")+money(q.change_percent)+"%)":"—",q?(q.is_delayed?"بيانات متأخرة":"حسب المزود"):"بانتظار البيانات"];
+    const values=[symbol,q?money(q.price):"—",q?(Number(q.change)>=0?"+":"")+money(q.change)+" ("+(Number(q.change_percent)>=0?"+":"")+money(q.change_percent)+"%)":"—",q?((q.is_delayed?"متأخرة":"حسب المزود")+(q.updated_at?" · "+new Date(q.updated_at).toLocaleString("ar-SA",{dateStyle:"short",timeStyle:"short"}):" · وقت التحديث غير متاح")):"بانتظار البيانات"];
     values.forEach((value,i)=>{const td=document.createElement("td");td.textContent=value;if(i===2&&q)td.dir="ltr";tr.append(td);});
     const td=document.createElement("td"),btn=document.createElement("button");btn.className="remove";btn.type="button";btn.textContent="حذف";
     btn.addEventListener("click",()=>{symbols=symbols.filter(x=>x!==symbol);delete quoteCache[symbol];persist();render();});td.append(btn);tr.append(td);body.append(tr);
