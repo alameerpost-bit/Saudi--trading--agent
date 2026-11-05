@@ -21,14 +21,16 @@ The backend files (`server.js` and `package.json`) are in the repository root. D
 5. Start command: `npm start`.
 6. Add these environment variables in Render:
    - `SAHMK_API_KEY`: your private SAHMK API key.
-   - `ALLOWED_ORIGIN`: `https://alameerpost-bit.github.io`.\n   - Optional `SAHMK_BASE_URL`: defaults to `https://api.sahmk.sa/api/v1`.
+   - `ALLOWED_ORIGIN`: `https://alameerpost-bit.github.io`.
+   - Optional `SAHMK_BASE_URL`: defaults to `https://api.sahmk.sa/api/v1`.
 7. Deploy and copy the public Render service URL.
 
 ## Backend endpoints
 
 Replace `YOUR_RENDER_URL` with the deployed service URL:
 
-- `YOUR_RENDER_URL/api/health` — backend status and whether the key is configured.\n- `YOUR_RENDER_URL/api/health/provider` — performs a read-only authenticated SAHMK market-summary request and reports provider timestamp/delay status.
+- `YOUR_RENDER_URL/api/health` — backend status and whether the key is configured.
+- `YOUR_RENDER_URL/api/health/provider` — performs a read-only authenticated SAHMK market-summary request and reports provider timestamp/delay status.
 - `YOUR_RENDER_URL/api/market/summary` — market summary from SAHMK.
 - `YOUR_RENDER_URL/api/quote/2222` — quote test for symbol 2222 (Saudi Aramco).
 
