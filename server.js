@@ -93,4 +93,91 @@ app.get('/api/argaam/companies', async (req, res) => {
   }
 });
 
+
+function argaamParams(input, defaults = {}) {
+  const params = new URLSearchParams({ ...defaults, ...input, marketId: '1' });
+  return params;
+}
+
+async function argaamGet(path, params = {}) {
+  if (!ARGAAM_API_KEY) {
+    const error = new Error('ARGAAM_API_KEY is not configured');
+    error.status = 503;
+    throw error;
+  }
+  const query = params instanceof URLSearchParams ? params.toString() : new URLSearchParams(params).toString();
+  const response = await fetch(`${ARGAAM_BASE}${path}${query ? `?${query}` : ''}`, {
+    headers: { apikey: ARGAAM_API_KEY, Accept: 'application/json' }
+  });
+  const body = await response.text();
+  if (!response.ok) {
+    const error = new Error(body.slice(0, 300) || `Argaam returned HTTP ${response.status}`);
+    error.status = response.status;
+    error.requestId = response.headers.get('x-request-id') || null;
+    throw error;
+  }
+  try { return JSON.parse(body); }
+  catch { throw new Error('Argaam response was not valid JSON'); }
+}
+
+function validSymbol(req, res) {
+  const symbol = String(req.params.symbol || '').trim();
+  if (!/^\\d{4,5}$/.test(symbol)) {
+    res.status(400).json({ error: 'invalid_symbol', message: 'Use a 4- or 5-digit Tadawul symbol.' });
+    return null;
+  }
+  return symbol;
+}
+
+function argaamError(res, error) {
+  const status = error.status === 503 ? 503 : 502;
+  res.status(status).json({
+    error: error.status ? 'argaam_sandbox_unavailable' : 'argaam_request_failed',
+    status: error.status || null,
+    requestId: error.requestId || null,
+    message: error.message
+  });
+}
+
+// Read-only Argaam Sandbox endpoints. marketId=1 is always explicit for Tadawul.
+app.get('/api/argaam/quote/:symbol', async (req, res) => {
+  const symbol = validSymbol(req, res);
+  if (!symbol) return;
+  try {
+    const data = await argaamGet(`/companies/${encodeURIComponent(symbol)}/price`, argaamParams({}));
+    res.json({ provider: 'ARGAAM_SANDBOX', symbol, marketId: 1, retrievedAt: new Date().toISOString(), data });
+  } catch (error) { argaamError(res, error); }
+});
+
+app.get('/api/argaam/quote/:symbol/intraday', async (req, res) => {
+  const symbol = validSymbol(req, res);
+  if (!symbol) return;
+  try {
+    const data = await argaamGet(`/companies/${encodeURIComponent(symbol)}/price/intraday`, argaamParams({}));
+    res.json({ provider: 'ARGAAM_SANDBOX', symbol, marketId: 1, retrievedAt: new Date().toISOString(), data });
+  } catch (error) { argaamError(res, error); }
+});
+
+app.get('/api/argaam/quote/:symbol/history', async (req, res) => {
+  const symbol = validSymbol(req, res);
+  if (!symbol) return;
+  const from = String(req.query.from || '').trim();
+  const to = String(req.query.to || '').trim();
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(to) || from > to) {
+    return res.status(400).json({ error: 'invalid_date_range', message: 'Provide from and to as YYYY-MM-DD, with from <= to.' });
+  }
+  try {
+    const params = argaamParams({ from, to });
+    const data = await argaamGet(`/companies/${encodeURIComponent(symbol)}/price/history`, params);
+    res.json({ provider: 'ARGAAM_SANDBOX', symbol, marketId: 1, from, to, retrievedAt: new Date().toISOString(), data });
+  } catch (error) { argaamError(res, error); }
+});
+
+app.get('/api/argaam/market/summary', async (_req, res) => {
+  try {
+    const data = await argaamGet('/markets/1/data', new URLSearchParams());
+    res.json({ provider: 'ARGAAM_SANDBOX', marketId: 1, retrievedAt: new Date().toISOString(), data });
+  } catch (error) { argaamError(res, error); }
+});
+
 app.listen(PORT, () => console.log(`Saudi Trading Agent API listening on ${PORT}`));
