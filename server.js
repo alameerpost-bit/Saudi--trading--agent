@@ -107,6 +107,42 @@ app.get('/api/quote/:symbol', async (req, res) => {
   }
 });
 
+app.get('/api/history/:symbol', async (req, res) => {
+  const symbol = String(req.params.symbol || '').trim();
+  if (!/^\d{4,5}$/.test(symbol)) {
+    return res.status(400).json({ error: 'invalid_symbol', message: 'Use a 4- or 5-digit Tadawul symbol.' });
+  }
+  const interval = String(req.query.interval || '1d').trim();
+  const allowedIntervals = new Set(['1min', '5min', '15min', '30min', '60min', '1d', '1w', '1mo']);
+  if (!allowedIntervals.has(interval)) {
+    return res.status(400).json({ error: 'invalid_interval', message: 'Allowed intervals: 1min, 5min, 15min, 30min, 60min, 1d, 1w, 1mo.' });
+  }
+  const from = String(req.query.from || '').trim();
+  const to = String(req.query.to || '').trim();
+  const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + 'T00:00:00Z')) && new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) === value;
+  if ((from && !validDate(from)) || (to && !validDate(to)) || (from && to && from > to)) {
+    return res.status(400).json({ error: 'invalid_date_range', message: 'Use valid YYYY-MM-DD dates with from <= to.' });
+  }
+  const limit = Math.max(1, Math.min(2000, Number.parseInt(req.query.limit || '500', 10) || 500));
+  const offset = Math.max(0, Math.min(1000000, Number.parseInt(req.query.offset || '0', 10) || 0));
+  const params = new URLSearchParams({ interval, limit: String(limit), offset: String(offset) });
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  try {
+    const data = await providerGet(`/historical/${encodeURIComponent(symbol)}/?${params.toString()}`);
+    res.json({ provider: 'SAHMK', symbol, interval, from: from || null, to: to || null, retrievedAt: new Date().toISOString(), data });
+  } catch (error) {
+    const planLimit = error.status === 403;
+    res.status(planLimit ? 403 : (error.status === 503 ? 503 : 502)).json({
+      error: planLimit ? 'historical_data_plan_required' : 'history_unavailable',
+      providerStatus: error.status || null,
+      message: error.message,
+      provider: 'SAHMK',
+      tradingEnabled: false
+    });
+  }
+});
+
 app.get('/api/argaam/companies', async (req, res) => {
   if (!ARGAAM_API_KEY) {
     return res.status(503).json({ error: 'argaam_not_configured', message: 'ARGAAM_API_KEY is not configured' });
