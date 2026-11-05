@@ -40,30 +40,39 @@ async function getJSON(path){
   return data;
 }
 async function refreshData(){
-  const btn=$("refresh-data");btn.disabled=true;btn.textContent="جارٍ التحديث…";
+  const btn=$("refresh-data");
+  btn.disabled=true;btn.textContent="جارٍ التحديث…";
   setStatus("جارٍ جلب البيانات","يتم الاتصال بخادم الوكيل ومزود SAHMK.","neutral");
-  const results=await Promise.allSettled([
-    getJSON("/api/market/summary"),
-    ...symbols.map(symbol=>getJSON("/api/quote/"+encodeURIComponent(symbol)))
-  ]);
-  const marketResult=results[0];
-  if(marketResult.status==="fulfilled"){marketCache=marketResult.value;renderMarket();}
-  let goodQuotes=0, delayed=Boolean(marketCache?.data?.is_delayed);
-  symbols.forEach((symbol,i)=>{
-    const result=results[i+1];
-    if(result?.status==="fulfilled"){quoteCache[symbol]=result.value;goodQuotes++;delayed=delayed||Boolean(result.value.data?.is_delayed);}
-    else {delete quoteCache[symbol];}
-  });
-  render();
-  const now=new Date().toLocaleString("ar-SA",{dateStyle:"medium",timeStyle:"medium"});
-  $("last-retrieved").textContent="آخر جلب من خادم الوكيل: "+now;
-  const failures=results.filter(r=>r.status==="rejected").length;
-  if(marketResult.status==="fulfilled"&&goodQuotes===symbols.length){
-    setStatus(delayed?"الاتصال ناجح — البيانات متأخرة":"الاتصال ناجح — تحقق من توقيت كل سعر",delayed?"وصلت البيانات من SAHMK، لكن المزود يعلّم بعض/كل القراءات بأنها متأخرة. لا توجد توصيات دخول.":"وصلت البيانات. راجع وقت تحديث المزود لكل سهم قبل اتخاذ أي قرار.","warning");
-  }else{
-    setStatus("بيانات غير مكتملة",`نجح جلب ${goodQuotes} من ${symbols.length} أسهم. ${failures} طلبات تعذرت. لا توجد توصيات دخول.`,"error");
+  try {
+    const results=await Promise.allSettled([
+      getJSON("/api/market/summary"),
+      ...symbols.map(symbol=>getJSON("/api/quote/"+encodeURIComponent(symbol)))
+    ]);
+    const marketResult=results[0];
+    if(marketResult.status==="fulfilled"){marketCache=marketResult.value;renderMarket();}
+    let goodQuotes=0, delayed=Boolean(marketCache?.data?.is_delayed);
+    symbols.forEach((symbol,i)=>{
+      const result=results[i+1];
+      if(result?.status==="fulfilled"){quoteCache[symbol]=result.value;goodQuotes++;delayed=delayed||Boolean(result.value.data?.is_delayed);}
+      else {delete quoteCache[symbol];}
+    });
+    render();
+    const now=new Date().toLocaleString("ar-SA",{dateStyle:"medium",timeStyle:"medium"});
+    $("last-retrieved").textContent="آخر محاولة جلب: "+now;
+    const failures=results.filter(r=>r.status==="rejected").length;
+    const marketError=marketResult.status==="rejected"?marketResult.reason?.message:"";
+    const quoteErrors=results.slice(1).filter(r=>r.status==="rejected").map(r=>r.reason?.message).filter(Boolean);
+    if(marketResult.status==="fulfilled"&&goodQuotes===symbols.length){
+      setStatus(delayed?"الاتصال ناجح — البيانات متأخرة":"الاتصال ناجح — تحقق من توقيت كل سعر",delayed?"وصلت البيانات من SAHMK، لكن المزود يعلّم بعض/كل القراءات بأنها متأخرة. لا توجد توصيات دخول.":"وصلت البيانات. راجع وقت تحديث المزود لكل سهم قبل اتخاذ أي قرار.","warning");
+    }else{
+      const detail=[marketError, ...quoteErrors].filter(Boolean).join(" | ");
+      setStatus("تعذر اكتمال جلب البيانات",`نجح جلب ${goodQuotes} من ${symbols.length} أسهم. ${failures} طلبات تعذرت. ${detail || "تحقق من اتصال الإنترنت وإعداد CORS في الخادم."} لا توجد توصيات دخول.`,"error");
+    }
+  } catch(error) {
+    setStatus("حدث خطأ في الواجهة",error?.message||"خطأ غير معروف أثناء تحديث البيانات.","error");
+  } finally {
+    btn.disabled=false;btn.textContent="تحديث البيانات";
   }
-  $("refresh-data").disabled=false;btn.textContent="تحديث البيانات";
 }
 $("watch-form").addEventListener("submit",event=>{
   event.preventDefault();const input=$("symbol"),symbol=input.value.trim();
