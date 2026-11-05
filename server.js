@@ -122,7 +122,7 @@ async function argaamGet(path, params = {}) {
 
 function validSymbol(req, res) {
   const symbol = String(req.params.symbol || '').trim();
-  if (!/^\\d{4,5}$/.test(symbol)) {
+  if (!/^\d{4,5}$/.test(symbol)) {
     res.status(400).json({ error: 'invalid_symbol', message: 'Use a 4- or 5-digit Tadawul symbol.' });
     return null;
   }
@@ -163,7 +163,7 @@ app.get('/api/argaam/quote/:symbol/history', async (req, res) => {
   if (!symbol) return;
   const from = String(req.query.from || '').trim();
   const to = String(req.query.to || '').trim();
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(to) || from > to) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
     return res.status(400).json({ error: 'invalid_date_range', message: 'Provide from and to as YYYY-MM-DD, with from <= to.' });
   }
   try {
