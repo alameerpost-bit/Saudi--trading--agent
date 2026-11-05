@@ -7,18 +7,19 @@
 <title>وكيل التداول السعودي</title>
 </head>
 <body>
-<header><div class="brand"><span class="logo">س</span><div><b>وكيل التداول السعودي</b><small>الإصدار التجريبي 0.1</small></div></div><span class="tag">نسخة تجريبية</span></header>
+<header><div class="brand"><span class="logo">س</span><div><b>وكيل التداول السعودي</b><small>الإصدار التجريبي 0.1</small></div></div><span class="tag">تداول دون تنفيذ آلي</span></header>
 <main>
-<section class="notice"><b>حالة البيانات: غير متصلة</b><p>لم يتم ربط مصدر أسعار حي. لا توجد أسعار لحظية أو توصيات دخول فعلية في هذه النسخة.</p></section>
-<div class="heading"><div><small>السوق السعودي</small><h1>لوحة السوق</h1></div><span class="tag">بانتظار مصدر البيانات</span></div>
+<section class="notice" id="data-notice" data-kind="neutral"><b id="data-status-title">جارٍ الاتصال بمصدر البيانات…</b><p id="data-status-detail">يتم التحقق من اتصال SAHMK وتوقيت الأسعار.</p><button id="refresh-data" type="button">تحديث البيانات</button><p id="last-retrieved">لم يتم الجلب بعد.</p></section>
+<div class="heading"><div><small>السوق السعودي</small><h1>لوحة السوق</h1></div><span class="tag">المصدر: SAHMK</span></div>
 <section class="grid">
-<article class="card"><small>مؤشر تاسي</small><strong>—</strong><small>السعر غير متاح</small></article>
-<article class="card"><small>اتجاه السوق</small><strong>غير محدد</strong><small>يتطلب بيانات حديثة</small></article>
-<article class="card"><small>فرص مؤكدة</small><strong>0</strong><small>لا توجد إشارات دخول</small></article>
+<article class="card"><small>مؤشر تاسي</small><strong id="tasi-value">—</strong><small id="tasi-change">بانتظار البيانات</small><small id="tasi-time">وقت بيانات المؤشر: —</small></article>
+<article class="card"><small>اتجاه السوق حسب المزود</small><strong id="market-mood">غير محدد</strong><small id="market-breadth">بانتظار بيانات اتساع السوق</small></article>
+<article class="card"><small>فرص دخول مؤكدة</small><strong>0</strong><small>متوقفة حتى التحقق من حداثة البيانات والتحليل</small></article>
 </section>
 <section class="card"><div class="heading"><div><small>متابعة الأسهم</small><h2>قائمة المراقبة</h2></div><span class="tag">تاسي</span></div>
-<form id="watch-form"><input id="symbol" inputmode="numeric" maxlength="6" placeholder="رمز السهم، مثال 4030" required><button>إضافة</button></form>
-<div class="table-wrap"><table><thead><tr><th>الرمز</th><th>السعر</th><th>التغير</th><th>الحالة</th><th></th></tr></thead><tbody id="watch-list"></tbody></table></div></section>
+<form id="watch-form"><input id="symbol" inputmode="numeric" maxlength="5" placeholder="رمز السهم، مثال 2222" required><button>إضافة</button></form>
+<div class="table-wrap"><table><thead><tr><th>الرمز</th><th>السعر (ريال)</th><th>التغير</th><th>حالة البيانات</th><th></th></tr></thead><tbody id="watch-list"></tbody></table></div>
+</section>
 <section class="grid two">
 <article class="card"><small>إدارة رأس المال</small><h2>حاسبة المخاطر</h2>
 <label>رأس المال (ريال)<input id="capital" type="number" min="1" value="10000"></label>
@@ -27,9 +28,9 @@
 <label>وقف الخسارة<input id="stop" type="number" min=".01" step="any" placeholder="أدخل السعر"></label>
 <button id="calculate" type="button">احسب حجم المركز</button><p id="result" class="result" aria-live="polite">أدخل القيم لحساب المخاطرة النظرية.</p></article>
 <article class="card"><small>ضوابط التوصية</small><h2>بوابة الدخول</h2>
-<ul><li>مصدر بيانات موثوق: غير متصل</li><li>توقيت السعر: غير متاح</li><li>تحليل تاسي والأسهم: غير متاح</li><li>العمولات والانزلاق: لم تُحتسب</li></ul>
-<p class="muted">لن يصدر التطبيق توصية دخول قبل التحقق من البيانات. لا يوجد اتصال بالراجحي المالية ولا تنفيذ أوامر في هذا الإصدار.</p></article>
+<ul><li>مصدر البيانات: SAHMK</li><li>توقيت السعر: يعرض لكل مصدر عند وصوله</li><li>بيانات متأخرة: لا توصية دخول</li><li>العمولات والانزلاق: لم تُحتسب بعد</li></ul>
+<p class="muted">لن يصدر التطبيق توصية دخول عند تأخر البيانات أو نقصها. لا يوجد اتصال بالراجحي المالية ولا تنفيذ أوامر في هذا الإصدار.</p></article>
 </section>
-<section class="card"><small>خارطة التطوير</small><h2>المراحل التالية</h2><ol><li>ربط مزود بيانات سعودي موثوق ومرخّص.</li><li>تحليل فني للمضاربة والاستثمار مع مصدر وتوقيت كل سعر.</li><li>اختبار تاريخي يشمل العمولة والانزلاق ومقارنة تاسي.</li><li>تنبيهات للمراجعة بموافقتك، دون تنفيذ آلي.</li></ol></section>
+<section class="card"><small>خارطة التطوير</small><h2>المراحل التالية</h2><ol><li>إضافة تحليل فني موثق للمضاربة والاستثمار مع شروط واضحة.</li><li>اختبار تاريخي يشمل العمولة والانزلاق ومقارنة تاسي.</li><li>تنبيهات للمراجعة بموافقتك، دون تنفيذ آلي.</li></ol></section>
 <footer>وكيل التداول السعودي 0.1 · أداة مساعدة وليست توصية استثمارية</footer>
 </main><script src="./app.js"></script></body></html>
