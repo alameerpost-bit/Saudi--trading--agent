@@ -5,6 +5,8 @@ import 'dotenv/config';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.SAHMK_API_KEY;
+const ARGAAM_API_KEY = process.env.ARGAAM_API_KEY;
+const ARGAAM_BASE = 'https://api-sandbox.argaam.com/api/v1.1';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
 const BASE = 'https://api.sahmk.sa/api/v1';
 
@@ -23,6 +25,7 @@ app.get('/api/health', (_req, res) => res.json({
   ok: true,
   provider: 'SAHMK',
   apiKeyConfigured: Boolean(API_KEY),
+  argaamSandboxConfigured: Boolean(ARGAAM_API_KEY),
   tradingEnabled: false,
   serverTime: new Date().toISOString()
 }));
@@ -54,6 +57,39 @@ app.get('/api/quote/:symbol', async (req, res) => {
     res.json({ provider: 'SAHMK', symbol, retrievedAt: new Date().toISOString(), data });
   } catch (error) {
     res.status(502).json({ error: 'quote_unavailable', message: error.message });
+  }
+});
+
+app.get('/api/argaam/companies', async (req, res) => {
+  if (!ARGAAM_API_KEY) {
+    return res.status(503).json({ error: 'argaam_not_configured', message: 'ARGAAM_API_KEY is not configured' });
+  }
+  const page = Math.max(1, Math.min(1000, Number.parseInt(req.query.page || '1', 10) || 1));
+  const pageSize = Math.max(1, Math.min(100, Number.parseInt(req.query.pageSize || '20', 10) || 20));
+  const params = new URLSearchParams({
+    lang: '2',
+    page: String(page),
+    pageSize: String(pageSize),
+    marketIds: '1'
+  });
+  try {
+    const response = await fetch(`${ARGAAM_BASE}/companies?${params.toString()}`, {
+      headers: { apikey: ARGAAM_API_KEY, Accept: 'application/json' }
+    });
+    const body = await response.text();
+    if (!response.ok) {
+      return res.status(502).json({
+        error: 'argaam_sandbox_unavailable',
+        status: response.status,
+        message: body.slice(0, 300)
+      });
+    }
+    let data;
+    try { data = JSON.parse(body); }
+    catch { throw new Error('Argaam response was not valid JSON'); }
+    res.json({ provider: 'ARGAAM_SANDBOX', retrievedAt: new Date().toISOString(), page, pageSize, data });
+  } catch (error) {
+    res.status(502).json({ error: 'argaam_request_failed', message: error.message });
   }
 });
 
