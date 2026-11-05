@@ -8,7 +8,15 @@ const API_KEY = process.env.SAHMK_API_KEY;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
 const BASE = 'https://api.sahmk.sa/api/v1';
 
-app.use(cors({ origin: ALLOWED_ORIGIN ? ALLOWED_ORIGIN.split(',').map(s => s.trim()) : false }));
+const allowedOrigins = new Set([
+  'https://alameerpost-bit.github.io',
+  ...(ALLOWED_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean)
+]);
+app.use(cors({ origin(origin, callback) {
+  // Public, read-only market endpoints: allow the published app and configured origins.
+  if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+  return callback(null, false);
+} }));
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => res.json({
