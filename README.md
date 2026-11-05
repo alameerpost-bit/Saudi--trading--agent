@@ -33,6 +33,7 @@ Replace `YOUR_RENDER_URL` with the deployed service URL:
 - `YOUR_RENDER_URL/api/health/provider` — performs a read-only authenticated SAHMK market-summary request and reports provider timestamp/delay status.
 - `YOUR_RENDER_URL/api/market/summary` — market summary from SAHMK.
 - `YOUR_RENDER_URL/api/quote/2222` — quote test for symbol 2222 (Saudi Aramco).
+- `YOUR_RENDER_URL/api/history/2222?interval=1d&from=2026-08-01&to=2026-11-05&limit=500` — read-only historical OHLCV test. SAHMK historical data requires Starter or higher; Free has no historical access. Intraday intervals are plan-limited.
 
 A successful health response does not prove market-data access. Test the summary and quote endpoints separately and verify each provider timestamp and delayed/realtime flag.
 
