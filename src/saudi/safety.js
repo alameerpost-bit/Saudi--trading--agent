@@ -10,7 +10,7 @@ export function assessMarketDataQuality(snapshot, options = {}) {
     return { eligible: false, reasons: ['missing_snapshot'], ageSeconds: null };
   }
   if (typeof snapshot.provider !== 'string' || !snapshot.provider.trim()) reasons.push('missing_provider');
-  if (typeof snapshot.symbol !== 'string' || !/^\\d{4,5}$/.test(snapshot.symbol)) reasons.push('invalid_tadawul_symbol');
+  if (typeof snapshot.symbol !== 'string' || !/^\d{4,5}$/.test(snapshot.symbol)) reasons.push('invalid_tadawul_symbol');
   if (typeof snapshot.isDelayed !== 'boolean') reasons.push('delay_status_unknown');
   else if (snapshot.isDelayed) reasons.push('delayed_data');
   const sourceMs = Date.parse(snapshot.sourceTimestamp || '');
