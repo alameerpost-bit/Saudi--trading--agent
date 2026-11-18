@@ -3,8 +3,9 @@
   "project": "Saudi Trading Agent",
   "source": {
     "repository": "https://github.com/Jakeschincariol/trader-skill",
+    "commit": "5189e79b9a480755a3733ac9713f5353981dbe18",
     "license": "MIT",
-    "integration": "source reference; pin upstream revision before production"
+    "integration": "pinned-git-submodule"
   },
   "market": "Tadawul",
   "currency": "SAR",
