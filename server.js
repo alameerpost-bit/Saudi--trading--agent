@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import { readFileSync } from 'node:fs';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,6 +10,7 @@ const ARGAAM_API_KEY = process.env.ARGAAM_API_KEY;
 const ARGAAM_BASE = 'https://api-sandbox.argaam.com/api/v1.1';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
 const BASE = (process.env.SAHMK_BASE_URL || 'https://api.sahmk.sa/api/v1').replace(/\/+$/, '');
+const SKILL_REGISTRY = JSON.parse(readFileSync(new URL('./skills/registry.json', import.meta.url), 'utf8'));
 
 const allowedOrigins = new Set([
   'https://alameerpost-bit.github.io',
@@ -21,6 +23,8 @@ app.use(cors({ origin(origin, callback) {
 } }));
 app.use(express.json());
 app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
+app.get('/api/skills', (_req, res) => res.json({ ...SKILL_REGISTRY, retrievedAt: new Date().toISOString() }));
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
