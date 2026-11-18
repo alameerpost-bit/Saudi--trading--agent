@@ -1,0 +1,26 @@
+name: Saudi skills tests
+
+on:
+  push:
+    branches:
+      - feature/saudi-skills-integration
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository and pinned skill submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Run automated tests
+        run: npm test

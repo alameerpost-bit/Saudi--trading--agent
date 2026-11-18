@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "project": "Saudi Trading Agent",
+  "source": {
+    "repository": "https://github.com/Jakeschincariol/trader-skill",
+    "commit": "5189e79b9a480755a3733ac9713f5353981dbe18",
+    "license": "MIT",
+    "integration": "pinned-git-submodule"
+  },
+  "market": "Tadawul",
+  "currency": "SAR",
+  "safety": {
+    "tradingEnabled": false,
+    "brokerOrdersEnabled": false,
+    "automaticExecution": false,
+    "allowEntrySignalsWithStaleOrUnverifiedData": false,
+    "requireUserApproval": true
+  },
+  "skills": [
+    {
+      "id": "trader-analyst",
+      "nameAr": "محلل النتائج المالية",
+      "purpose": "تحليل القوائم والنتائج الربعية والهوامش والنمو.",
+      "marketFit": "requires_saudi_fundamentals_adapter",
+      "notes": "مصادر النسخة الأصلية SEC أمريكية؛ يلزم ربط إفصاحات وبيانات مالية سعودية.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-screener",
+      "nameAr": "فاحص الأسهم",
+      "purpose": "تصفية الشركات وفق مقاييس موثقة وترتيب النتائج.",
+      "marketFit": "requires_saudi_metrics",
+      "notes": "يلزم توحيد المقاييس المالية السعودية ومصادرها وتواريخها.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-news",
+      "nameAr": "مراقب الأخبار والإفصاحات",
+      "purpose": "متابعة الأخبار والإفصاحات المؤثرة على الشركات.",
+      "marketFit": "requires_saudi_news_sources",
+      "notes": "مصادر النسخة الأصلية أمريكية؛ يلزم مصادر سعودية موثوقة.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-alerts",
+      "nameAr": "تنبيهات الأسعار",
+      "purpose": "تنبيهات مستويات الأسعار ونسب التغير ومواعيد الجلسة.",
+      "marketFit": "requires_tadawul_calendar_adapter",
+      "notes": "تقويم NYSE ومصادر Yahoo/Stooq لا تستخدم كمرجع لتاسي.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-budget",
+      "nameAr": "مدير رأس المال",
+      "purpose": "توزيع رأس المال مع احتياطي نقدي وحدود للوزن وحجم الصفقة.",
+      "marketFit": "requires_sar_adapter",
+      "notes": "النسخة الأصلية بالدولار؛ يلزم تكييف SAR ووحدات التداول.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-risk",
+      "nameAr": "مدير المخاطر",
+      "purpose": "فحص الصفقة والمركز والسيولة والحدود والتكرار.",
+      "marketFit": "requires_saudi_risk_adapter",
+      "notes": "يلزم استبدال قواعد رموز الأسهم الأمريكية بقواعد تاسي وحدود المستخدم.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-broker",
+      "nameAr": "بوابة أوامر الوسيط",
+      "purpose": "عرض تذكرة أمر وتوثيق الموافقة قبل الإرسال.",
+      "marketFit": "blocked_until_official_sahm_order_api",
+      "notes": "النسخة الأصلية لـ Alpaca/IBKR؛ لا توجد واجهة أوامر سهم موثقة بالمشروع.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-rebalance",
+      "nameAr": "موازن المحفظة",
+      "purpose": "قياس انحراف المحفظة وإعداد مقترحات إعادة التوازن.",
+      "marketFit": "requires_readonly_portfolio_adapter",
+      "notes": "يتطلب بيانات محفظة سهم للقراءة فقط وتكييف حسابات SAR.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-tax",
+      "nameAr": "محلل تكلفة المراكز",
+      "purpose": "تتبع تكلفة الاقتناء والأرباح والخسائر.",
+      "marketFit": "disabled_us_tax_rules_not_applicable",
+      "notes": "قواعد الضرائب وwash-sale الأمريكية لا تطبق تلقائياً على المستثمر السعودي.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-copycat",
+      "nameAr": "متابع محافظ المستثمرين",
+      "purpose": "قراءة تغيرات محافظ المؤسسات من الإفصاحات العامة.",
+      "marketFit": "us_13f_reference_only",
+      "notes": "يعتمد على إفصاحات 13F الأمريكية ولا يمثل ملكيات تاسي.",
+      "enabled": false,
+      "execution": "reference_only"
+    },
+    {
+      "id": "trader-pelosi",
+      "nameAr": "متابع إفصاحات الكونغرس",
+      "purpose": "قراءة إفصاحات تداول أعضاء الكونغرس الأمريكي.",
+      "marketFit": "us_congress_reference_only",
+      "notes": "خاص بإفصاحات الولايات المتحدة ولا يستخدم لإشارات تاسي.",
+      "enabled": false,
+      "execution": "reference_only"
+    }
+  ]
+}

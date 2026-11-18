@@ -90,3 +90,24 @@ $("calculate").addEventListener("click",()=>{
 if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
 render();
 refreshData();
+
+
+// Read-only registry display. Imported skill scripts are never executed in the browser.
+async function loadSkills(){
+  const host=$("skills-list"); if(!host)return;
+  try{
+    const response=await fetch(`${API_BASE}/api/skills`,{cache:"no-store"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=await response.json(); host.replaceChildren();
+    for(const skill of data.skills||[]){
+      const item=document.createElement("article");item.className="skill-item";
+      const title=document.createElement("strong");title.textContent=skill.nameAr||skill.id;
+      const id=document.createElement("small");id.textContent=skill.id;
+      const purpose=document.createElement("p");purpose.textContent=skill.purpose||"";
+      const state=document.createElement("span");state.className="skill-state";state.textContent="غير مفعّلة — بانتظار التكييف";
+      const note=document.createElement("p");note.className="muted";note.textContent=skill.notes||"";
+      item.append(title,id,purpose,state,note);host.append(item);
+    }
+  }catch(error){host.textContent="تعذر تحميل سجل المهارات: "+error.message;}
+}
+loadSkills();
