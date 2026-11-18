@@ -3,7 +3,7 @@
  * Screens supplied, source-labelled metrics only. It does not fetch prices,
  * infer missing metrics, create recommendations, or submit orders.
  */
-const VALID_SYMBOL = /^\\d{4,5}$/;
+const VALID_SYMBOL = /^\d{4,5}$/;
 const OPS = new Set(['>', '>=', '<', '<=', '==', '!=', 'between', 'in', 'not in']);
 
 function numeric(value) {
@@ -79,8 +79,6 @@ export function screenTadawulCompanies(companies, config = {}) {
     });
     const failedChecks = checks.filter(x => x.status === 'FAIL');
     if (failedChecks.length) reasons.push('screening_rules_failed');
-    const skippedChecks = checks.filter(x => x.status === 'SKIP');
-    // Explicitly skipped metrics remain visible in checks but do not fail the company.
 
     const rankScores = rank.map(item => {
       const value = metrics[item.metric];
