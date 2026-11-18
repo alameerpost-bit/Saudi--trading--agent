@@ -37,7 +37,7 @@ function margin(value, revenue) {
 
 export function analyzeSaudiQuarterlyResults(company, options = {}) {
   if (!company || typeof company !== 'object') throw new TypeError('Company metadata is required.');
-  if (typeof company.symbol !== 'string' || !/^\\d{4,5}$/.test(company.symbol)) {
+  if (typeof company.symbol !== 'string' || !/^\d{4,5}$/.test(company.symbol)) {
     throw new TypeError('A valid 4–5 digit Tadawul symbol is required.');
   }
   if (company.market !== 'Tadawul' || company.currency !== 'SAR') {
