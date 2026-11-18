@@ -44,3 +44,13 @@ A successful health response does not prove market-data access. Test the summary
 - Do not put the key in frontend JavaScript, GitHub Pages, screenshots, or chat messages.
 - Confirm the provider's current endpoint, response schema, data delay, and display permissions before using data for decisions.
 - Do not add brokerage credentials or order execution to this project without a separate, explicit security review and user approval.
+
+
+## Skills engine (11 skills)
+
+The upstream Trader Skill pack is catalogued in `skills/registry.json`; source and compatibility notes are documented in `skills/SOURCE.md` and `skills/SAUDI_ADAPTATION.md`.
+
+- `GET /api/skills` returns the 11-skill registry, Saudi-market readiness and safety flags.
+- `npm test` validates the registry and disabled execution safeguards.
+- All skills remain disabled pending Saudi-specific adapters and tests. US-only tax, 13F and Congress-disclosure logic is not applied to Tadawul.
+- Brokerage order submission and automatic execution remain disabled. No new Render secrets are required.
