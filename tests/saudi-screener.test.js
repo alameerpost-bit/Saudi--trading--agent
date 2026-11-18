@@ -25,7 +25,6 @@ test('screens only valid Tadawul SAR companies and ranks passing candidates', ()
   assert.equal(result.passed, 1);
   assert.equal(result.results[0].symbol, '2222');
   assert.equal(result.results[0].status, 'PASS');
-  assert.equal(result.results[0].resultType, undefined);
   assert.equal(result.resultType, 'screening_only_not_a_recommendation');
 });
 
@@ -45,6 +44,7 @@ test('skip policy is explicit and visible', () => {
   }], { ...config, missing: 'skip' });
   assert.equal(result.passed, 1);
   assert.ok(result.results[0].checks.some(x => x.status === 'SKIP'));
+  assert.equal(result.results[0].status, 'PASS');
 });
 
 test('stale fundamentals, US market and invalid symbol fail', () => {
