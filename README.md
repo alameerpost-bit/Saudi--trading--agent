@@ -51,6 +51,7 @@ A successful health response does not prove market-data access. Test the summary
 The upstream Trader Skill pack is catalogued in `skills/registry.json`; source and compatibility notes are documented in `skills/SOURCE.md` and `skills/SAUDI_ADAPTATION.md`.
 
 - `GET /api/skills` returns the 11-skill registry, Saudi-market readiness and safety flags.
+- `POST /api/skills/screen` screens up to 500 caller-supplied Tadawul/SAR fundamentals records against 1–30 rules; this is a calculation endpoint, not a data feed or recommendation engine. Request JSON: `{ "companies": [...], "rules": [{"metric":"pe","op":"<=","value":20}], "rank": [] }`.
 - `npm test` validates the registry and disabled execution safeguards.
 - `src/saudi/safety.js` adds a fail-closed market-data quality gate and SAR position-sizing calculator; details: `skills/SAUDI_SAFETY_PRIMITIVES.md`.
 - `src/saudi/screener.js` adds a deterministic Tadawul fundamentals screener with SAR/Tadawul checks, dated source metadata, missing-metric handling and ranking; details: `skills/SAUDI_SCREENER.md`.
