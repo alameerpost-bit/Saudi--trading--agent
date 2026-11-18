@@ -53,5 +53,7 @@ The upstream Trader Skill pack is catalogued in `skills/registry.json`; source a
 - `GET /api/skills` returns the 11-skill registry, Saudi-market readiness and safety flags.
 - `npm test` validates the registry and disabled execution safeguards.
 - `src/saudi/safety.js` adds a fail-closed market-data quality gate and SAR position-sizing calculator; details: `skills/SAUDI_SAFETY_PRIMITIVES.md`.
+- `src/saudi/screener.js` adds a deterministic Tadawul fundamentals screener with SAR/Tadawul checks, dated source metadata, missing-metric handling and ranking; details: `skills/SAUDI_SCREENER.md`.
+- GitHub Actions workflow `.github/workflows/saudi-skills-tests.yml` runs `npm test` on the integration branch and pull requests.
 - All skills remain disabled pending Saudi-specific adapters and tests. US-only tax, 13F and Congress-disclosure logic is not applied to Tadawul.
 - Brokerage order submission and automatic execution remain disabled. No new Render secrets are required.
