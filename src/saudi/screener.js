@@ -80,7 +80,7 @@ export function screenTadawulCompanies(companies, config = {}) {
     const failedChecks = checks.filter(x => x.status === 'FAIL');
     if (failedChecks.length) reasons.push('screening_rules_failed');
     const skippedChecks = checks.filter(x => x.status === 'SKIP');
-    if (skippedChecks.length) reasons.push('metrics_skipped');
+    // Explicitly skipped metrics remain visible in checks but do not fail the company.
 
     const rankScores = rank.map(item => {
       const value = metrics[item.metric];
