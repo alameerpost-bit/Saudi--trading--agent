@@ -1,0 +1,3 @@
+[submodule "skills/source"]
+	path = skills/source
+	url = https://github.com/Jakeschincariol/trader-skill.git
