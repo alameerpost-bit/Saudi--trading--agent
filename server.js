@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
+import { screenTadawulCompanies } from './src/saudi/screener.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,10 +22,29 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || allowedOrigins.has(origin)) return callback(null, true);
   return callback(null, false);
 } }));
-app.use(express.json());
+app.use(express.json({ limit: '256kb' }));
 app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 app.get('/api/skills', (_req, res) => res.json({ ...SKILL_REGISTRY, retrievedAt: new Date().toISOString() }));
+
+app.post('/api/skills/screen', (req, res) => {
+  const { companies, rules, rank, missing, maxAgeDays } = req.body || {};
+  if (!Array.isArray(companies) || companies.length > 500) {
+    return res.status(400).json({ error: 'invalid_companies', message: 'Provide an array of up to 500 company records.' });
+  }
+  if (!Array.isArray(rules) || rules.length === 0 || rules.length > 30) {
+    return res.status(400).json({ error: 'invalid_rules', message: 'Provide between 1 and 30 screening rules.' });
+  }
+  if (rank !== undefined && (!Array.isArray(rank) || rank.length > 10)) {
+    return res.status(400).json({ error: 'invalid_rank', message: 'Rank must contain no more than 10 metrics.' });
+  }
+  try {
+    const result = screenTadawulCompanies(companies, { rules, rank, missing, maxAgeDays });
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: 'invalid_screen_request', message: error.message });
+  }
+});
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
