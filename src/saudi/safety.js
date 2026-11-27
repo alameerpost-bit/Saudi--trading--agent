@@ -44,6 +44,10 @@ export function assessOhlcvQuality(candles) {
       continue;
     }
     const { open, high, low, close, volume } = candle;
+    const time = Date.parse(candle.timestamp || candle.time || '');
+    if (!Number.isFinite(time)) reasons.push('invalid_candle_timestamp_' + i);
+    else if (time <= previousTime) reasons.push('non_increasing_candle_timestamps_' + i);
+    if (Number.isFinite(time)) previousTime = time;
     const values = [open, high, low, close, volume];
     if (!values.every(Number.isFinite) || [open, high, low, close].some(x => x <= 0) || volume < 0) {
       reasons.push('invalid_ohlcv_values_' + i);
@@ -52,10 +56,6 @@ export function assessOhlcvQuality(candles) {
     if (high < Math.max(open, close, low) || low > Math.min(open, close, high)) {
       reasons.push('inconsistent_ohlc_range_' + i);
     }
-    const time = Date.parse(candle.timestamp || candle.time || '');
-    if (!Number.isFinite(time)) reasons.push('invalid_candle_timestamp_' + i);
-    else if (time <= previousTime) reasons.push('non_increasing_candle_timestamps_' + i);
-    if (Number.isFinite(time)) previousTime = time;
   }
   return { eligible: reasons.length === 0, reasons, candleCount: candles.length };
 }
