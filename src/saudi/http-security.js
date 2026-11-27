@@ -1,6 +1,6 @@
 /** Small in-process HTTP security helpers. For multi-instance deployments use a shared limiter store. */
-export function createFixedWindowRateLimiter({ windowMs, max, message = 'Too many requests. Please retry later.' }) {
-  if (!Number.isInteger(windowMs) || windowMs < 1000 || !Number.isInteger(max) || max < 1) {
+export function createFixedWindowRateLimiter({ windowMs, max, maxKeys = 10000, message = 'Too many requests. Please retry later.' }) {
+  if (!Number.isInteger(windowMs) || windowMs < 1000 || !Number.isInteger(max) || max < 1 || !Number.isInteger(maxKeys) || maxKeys < 100) {
     throw new RangeError('Invalid rate-limit configuration.');
   }
   const buckets = new Map();
@@ -14,6 +14,7 @@ export function createFixedWindowRateLimiter({ windowMs, max, message = 'Too man
     const key = String(req.ip || req.socket?.remoteAddress || 'unknown');
     let bucket = buckets.get(key);
     if (!bucket || bucket.resetAt <= now) {
+      if (!bucket && buckets.size >= maxKeys) buckets.delete(buckets.keys().next().value);
       bucket = { count: 0, resetAt: now + windowMs };
       buckets.set(key, bucket);
     }
