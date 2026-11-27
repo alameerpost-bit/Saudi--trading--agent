@@ -16,6 +16,8 @@ test('HTTP API integration: health, skills, validation, security headers, CORS a
     assert.equal(healthData.tradingEnabled, false);
     assert.equal(health.headers.get('x-content-type-options'), 'nosniff');
     assert.equal(health.headers.get('x-frame-options'), 'DENY');
+    assert.match(health.headers.get('content-security-policy'), /default-src 'none'/);
+    assert.equal(health.headers.get('x-permitted-cross-domain-policies'), 'none');
     assert.equal(health.headers.get('cache-control'), 'no-store');
     assert.equal(health.headers.get('access-control-allow-origin'), 'https://alameerpost-bit.github.io');
 
