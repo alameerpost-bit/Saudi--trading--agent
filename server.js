@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { screenTadawulCompanies } from './src/saudi/screener.js';
 import { createFixedWindowRateLimiter, normalizeSahmkBaseUrl, safeProviderMessage } from './src/saudi/http-security.js';
 
@@ -372,4 +374,8 @@ app.get('/api/argaam/fundamentals/:symbol', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Saudi Trading Agent API listening on ${PORT}`));
+export { app };
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  app.listen(PORT, () => console.log(`Saudi Trading Agent API listening on ${PORT}`));
+}
