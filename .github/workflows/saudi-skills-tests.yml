@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,7 +23,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install dependencies
-        run: npm install
+      - name: Pin npm version
+        run: npm install --global npm@10.9.2
+      - name: Generate and commit lockfile when missing
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/saudi-skills-integration'
+        run: |
+          if [ ! -f package-lock.json ]; then
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "build: add reproducible npm lockfile"
+            git push
+          fi
+      - name: Install exact dependency tree
+        run: npm ci
       - name: Run automated tests
         run: npm test
