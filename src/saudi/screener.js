@@ -3,7 +3,7 @@
  * Screens supplied, source-labelled metrics only. It never fetches prices,
  * infers missing metrics, creates recommendations, or submits orders.
  */
-const VALID_SYMBOL = /^\\d{4,5}$/;
+const VALID_SYMBOL = /^\d{4,5}$/;
 const OPS = new Set(['>', '>=', '<', '<=', '==', '!=', 'between', 'in', 'not in']);
 const numeric = value => typeof value === 'number' && Number.isFinite(value);
 
