@@ -26,6 +26,7 @@ test('screens only valid Tadawul SAR companies and ranks passing candidates', ()
   assert.equal(result.results[0].symbol, '2222');
   assert.equal(result.results[0].status, 'PASS');
   assert.equal(result.resultType, 'screening_only_not_a_recommendation');
+  assert.ok(result.results[0].score >= 0 && result.results[0].score <= 1);
 });
 
 test('missing metrics fail closed by default', () => {
@@ -34,17 +35,19 @@ test('missing metrics fail closed by default', () => {
     asOf: '2026-10-31', metrics: { revenueGrowthYoY: 15 }
   }], config);
   assert.equal(result.passed, 0);
+  assert.equal(result.failed, 1);
   assert.ok(result.results[0].checks.some(x => x.reason === 'missing_or_non_numeric_metric' && x.status === 'FAIL'));
 });
 
-test('skip policy is explicit and visible', () => {
+test('skip policy is visible and never qualifies an incomplete company', () => {
   const result = screenTadawulCompanies([{
     symbol: '2222', market: 'Tadawul', currency: 'SAR', source: 'fixture',
     asOf: '2026-10-31', metrics: { revenueGrowthYoY: 15, netMargin: 11 }
   }], { ...config, missing: 'skip' });
-  assert.equal(result.passed, 1);
+  assert.equal(result.passed, 0);
+  assert.equal(result.inconclusive, 1);
+  assert.equal(result.results[0].status, 'INCONCLUSIVE');
   assert.ok(result.results[0].checks.some(x => x.status === 'SKIP'));
-  assert.equal(result.results[0].status, 'PASS');
 });
 
 test('stale fundamentals, US market and invalid symbol fail', () => {
@@ -57,7 +60,22 @@ test('stale fundamentals, US market and invalid symbol fail', () => {
   assert.ok(result.results.some(x => x.reasons.includes('market_not_tadawul')));
 });
 
-test('invalid rule definitions throw rather than silently changing the screen', () => {
+test('ranking normalizes mixed-unit metrics and reports missing rank inputs as inconclusive', () => {
+  const result = screenTadawulCompanies([
+    { ...companies[0], metrics: { revenueGrowthYoY: 10, pe: 10 } },
+    { ...companies[1], metrics: { revenueGrowthYoY: 20, pe: 20 } },
+    { ...companies[0], symbol: '1180', metrics: { revenueGrowthYoY: 15 } }
+  ], { ...config, rules: [{ metric: 'revenueGrowthYoY', op: '>=', value: 0 }] });
+  assert.equal(result.inconclusive, 1);
+  assert.equal(result.results.find(x => x.symbol === '1180').status, 'INCONCLUSIVE');
+  for (const item of result.results.filter(x => x.score !== null)) {
+    assert.ok(item.score >= 0 && item.score <= 1);
+  }
+});
+
+test('invalid rule and rank definitions throw instead of silently changing the screen', () => {
   assert.throws(() => screenTadawulCompanies(companies, { ...config, rules: [] }), TypeError);
   assert.throws(() => screenTadawulCompanies(companies, { ...config, rules: [{ metric: 'pe', op: 'approx', value: 10 }] }), TypeError);
+  assert.throws(() => screenTadawulCompanies(companies, { ...config, rank: [{ metric: 'pe', order: 'sideways' }] }), TypeError);
+  assert.throws(() => screenTadawulCompanies(companies, { ...config, rank: [{ metric: 'pe', order: 'asc', weight: 0 }] }), TypeError);
 });
