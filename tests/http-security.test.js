@@ -22,7 +22,7 @@ test('provider errors are sanitized and timeout remains identifiable', () => {
 });
 
 test('fixed-window limiter blocks requests above the configured threshold', () => {
-  const limiter = createFixedWindowRateLimiter({ windowMs: 10000, max: 1 });
+  const limiter = createFixedWindowRateLimiter({ windowMs: 10000, max: 1, maxKeys: 100 });
   const makeResponse = () => ({
     headers: {}, statusCode: 200, payload: null,
     set(name, value) { this.headers[name] = value; return this; },
