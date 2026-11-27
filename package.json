@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test tests/frontend-contract.test.js tests/http-security.test.js tests/saudi-analyst.test.js tests/saudi-safety.test.js tests/saudi-screener.test.js tests/server.integration.test.js tests/skills-registry.test.js",
+    "test:browser": "node --test tests/browser-smoke.test.js"
   },
   "engines": {
     "node": ">=20"
