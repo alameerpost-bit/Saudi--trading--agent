@@ -8,20 +8,20 @@ const frontend = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const backend = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
 
 test('frontend DOM references resolve to elements in the published HTML', () => {
-  const ids = new Set([...html.matchAll(/\\bid="([^"]+)"/g)].map(match => match[1]));
-  const referenced = new Set([...frontend.matchAll(/\\$\\(["']([^"']+)["']\\)/g)].map(match => match[1]));
+  const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
+  const referenced = new Set([...frontend.matchAll(/\$\(["']([^"']+)["']\)/g)].map(match => match[1]));
   const missing = [...referenced].filter(id => !ids.has(id));
   assert.deepEqual(missing, []);
 });
 
 test('frontend API calls have matching read-only backend routes', () => {
-  assert.match(frontend, /getJSON\\("\/api\/market\/summary"\\)/);
-  assert.match(frontend, /getJSON\\("\/api\/quote\/"\\s*\\+/);
-  assert.match(frontend, /fetch\\(\`\\$\\{API_BASE\\}\/api\/skills\`/);
-  assert.match(backend, /app\\.get\\('\/api\/market\/summary'/);
-  assert.match(backend, /app\\.get\\('\/api\/quote\/:symbol'/);
-  assert.match(backend, /app\\.get\\('\/api\/skills'/);
-  assert.match(backend, /tradingEnabled: false/);
+  assert.ok(frontend.includes('getJSON("/api/market/summary")'));
+  assert.ok(frontend.includes('getJSON("/api/quote/"+encodeURIComponent(symbol))'));
+  assert.ok(frontend.includes('/api/skills'));
+  assert.ok(backend.includes("app.get('/api/market/summary'"));
+  assert.ok(backend.includes("app.get('/api/quote/:symbol'"));
+  assert.ok(backend.includes("app.get('/api/skills'"));
+  assert.ok(backend.includes('tradingEnabled: false'));
 });
 
 test('frontend and backend JavaScript parse without syntax errors', () => {
