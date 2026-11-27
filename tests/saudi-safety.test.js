@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assessMarketDataQuality, calculateSaudiPositionSize } from '../src/saudi/safety.js';
+import { assessMarketDataQuality, assessOhlcvQuality, calculateSaudiPositionSize } from '../src/saudi/safety.js';
 
 const now = Date.parse('2026-11-18T08:00:00.000Z');
 const fresh = {
@@ -32,6 +32,24 @@ test('stale and future source timestamps are rejected', () => {
   assert.ok(future.reasons.includes('source_timestamp_in_future'));
 });
 
+test('OHLCV gate accepts valid chronological candles', () => {
+  const result = assessOhlcvQuality([
+    { timestamp: '2026-11-18T07:00:00Z', open: 49, high: 51, low: 48, close: 50, volume: 1000 },
+    { timestamp: '2026-11-18T07:01:00Z', open: 50, high: 52, low: 49, close: 51, volume: 1200 }
+  ]);
+  assert.equal(result.eligible, true);
+});
+
+test('OHLCV gate rejects invalid ranges, negative volume and unordered timestamps', () => {
+  const result = assessOhlcvQuality([
+    { timestamp: '2026-11-18T07:01:00Z', open: 49, high: 48, low: 50, close: 51, volume: -1 },
+    { timestamp: '2026-11-18T07:00:00Z', open: 50, high: 52, low: 49, close: 51, volume: 100 }
+  ]);
+  assert.equal(result.eligible, false);
+  assert.ok(result.reasons.some(x => x.startsWith('invalid_ohlcv_values_')));
+  assert.ok(result.reasons.some(x => x.startsWith('non_increasing_candle_timestamps_')));
+});
+
 test('position sizing uses the tightest risk, concentration and cash constraint', () => {
   const result = calculateSaudiPositionSize({
     capitalSar: 10000, riskPercent: 1, entryPrice: 50, stopPrice: 48,
@@ -42,11 +60,28 @@ test('position sizing uses the tightest risk, concentration and cash constraint'
   assert.equal(result.estimatedRiskSar, 80);
 });
 
-test('position sizing rejects invalid long-stop and unsafe percentages', () => {
+test('commission and slippage reduce size and are included in estimated risk', () => {
+  const free = calculateSaudiPositionSize({
+    capitalSar: 10000, riskPercent: 1, entryPrice: 50, stopPrice: 48
+  });
+  const withCosts = calculateSaudiPositionSize({
+    capitalSar: 10000, riskPercent: 1, entryPrice: 50, stopPrice: 48,
+    commissionPercent: 0.15, slippageBps: 10
+  });
+  assert.ok(withCosts.shares < free.shares);
+  assert.ok(withCosts.estimatedRiskSar <= withCosts.riskBudgetSar);
+  assert.ok(withCosts.estimatedCostSar > withCosts.grossEntryValueSar);
+  assert.ok(withCosts.transactionCostsAtStopSar > 0);
+});
+
+test('position sizing rejects invalid stops, percentages and costs', () => {
   assert.throws(() => calculateSaudiPositionSize({
     capitalSar: 10000, riskPercent: 1, entryPrice: 50, stopPrice: 51
   }), RangeError);
   assert.throws(() => calculateSaudiPositionSize({
     capitalSar: 10000, riskPercent: 101, entryPrice: 50, stopPrice: 48
+  }), RangeError);
+  assert.throws(() => calculateSaudiPositionSize({
+    capitalSar: 10000, riskPercent: 1, entryPrice: 50, stopPrice: 48, slippageBps: -1
   }), RangeError);
 });
