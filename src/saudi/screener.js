@@ -1,21 +1,16 @@
 /**
  * Deterministic Tadawul fundamentals screener.
- * Screens supplied, source-labelled metrics only. It does not fetch prices,
- * infer missing metrics, create recommendations, or submit orders.
+ * Screens supplied, source-labelled metrics only. It never fetches prices,
+ * infers missing metrics, creates recommendations, or submits orders.
  */
-const VALID_SYMBOL = /^\d{4,5}$/;
+const VALID_SYMBOL = /^\\d{4,5}$/;
 const OPS = new Set(['>', '>=', '<', '<=', '==', '!=', 'between', 'in', 'not in']);
-
-function numeric(value) {
-  return typeof value === 'number' && Number.isFinite(value);
-}
+const numeric = value => typeof value === 'number' && Number.isFinite(value);
 
 function compare(actual, op, expected) {
-  if (op === 'between') return Array.isArray(expected) && expected.length === 2 &&
-    numeric(expected[0]) && numeric(expected[1]) && actual >= expected[0] && actual <= expected[1];
-  if (op === 'in') return Array.isArray(expected) && expected.includes(actual);
-  if (op === 'not in') return Array.isArray(expected) && !expected.includes(actual);
-  if (!numeric(actual) || !numeric(expected)) return false;
+  if (op === 'between') return actual >= expected[0] && actual <= expected[1];
+  if (op === 'in') return expected.includes(actual);
+  if (op === 'not in') return !expected.includes(actual);
   if (op === '>') return actual > expected;
   if (op === '>=') return actual >= expected;
   if (op === '<') return actual < expected;
@@ -44,6 +39,17 @@ function validateRules(rules) {
   }
 }
 
+function validateRank(rank) {
+  if (!Array.isArray(rank)) throw new TypeError('rank must be an array.');
+  for (const item of rank) {
+    if (!item || typeof item.metric !== 'string' || !item.metric.trim() ||
+        !['asc', 'desc'].includes(item.order) ||
+        (item.weight !== undefined && (!numeric(item.weight) || item.weight <= 0))) {
+      throw new TypeError('Each rank item requires a metric, asc/desc order, and a positive finite weight.');
+    }
+  }
+}
+
 export function screenTadawulCompanies(companies, config = {}) {
   const rules = config.rules;
   validateRules(rules);
@@ -52,12 +58,25 @@ export function screenTadawulCompanies(companies, config = {}) {
   const nowMs = Number.isFinite(config.nowMs) ? config.nowMs : Date.now();
   const maxAgeDays = Number.isFinite(config.maxAgeDays) ? config.maxAgeDays : 180;
   if (maxAgeDays < 0) throw new RangeError('maxAgeDays must be non-negative.');
-  const rank = Array.isArray(config.rank) ? config.rank : [];
+  const rank = config.rank === undefined ? [] : config.rank;
+  validateRank(rank);
+  const input = Array.isArray(companies) ? companies : [];
 
-  const results = (Array.isArray(companies) ? companies : []).map(company => {
+  // Normalize every ranking metric to 0..1 across this screening batch.
+  // Missing ranking values remain unavailable; raw SAR, percentages and ratios
+  // are never mixed directly in a weighted sum.
+  const ranges = new Map();
+  for (const item of rank) {
+    const values = input.map(c => c?.metrics?.[item.metric]).filter(numeric);
+    if (values.length) ranges.set(item.metric, { min: Math.min(...values), max: Math.max(...values) });
+  }
+
+  const results = input.map(company => {
+    if (!company || typeof company !== 'object') {
+      return { symbol: null, status: 'FAIL', reasons: ['invalid_company_record'], checks: [], score: null };
+    }
     const reasons = [];
-    const metrics = company && company.metrics && typeof company.metrics === 'object' ? company.metrics : {};
-    if (!company || typeof company !== 'object') return { symbol: null, status: 'FAIL', reasons: ['invalid_company_record'] };
+    const metrics = company.metrics && typeof company.metrics === 'object' ? company.metrics : {};
     if (typeof company.symbol !== 'string' || !VALID_SYMBOL.test(company.symbol)) reasons.push('invalid_tadawul_symbol');
     if (company.market !== 'Tadawul') reasons.push('market_not_tadawul');
     if (company.currency !== 'SAR') reasons.push('currency_not_sar');
@@ -72,49 +91,55 @@ export function screenTadawulCompanies(companies, config = {}) {
 
     const checks = rules.map(rule => {
       const actual = metrics[rule.metric];
-      const exists = numeric(actual);
-      if (!exists) return { metric: rule.metric, status: missingPolicy === 'skip' ? 'SKIP' : 'FAIL', actual: null, op: rule.op, expected: rule.value, reason: 'missing_or_non_numeric_metric' };
+      if (!numeric(actual)) return {
+        metric: rule.metric, status: missingPolicy === 'skip' ? 'SKIP' : 'FAIL',
+        actual: null, op: rule.op, expected: rule.value,
+        reason: 'missing_or_non_numeric_metric'
+      };
       const passed = compare(actual, rule.op, rule.value);
       return { metric: rule.metric, status: passed ? 'PASS' : 'FAIL', actual, op: rule.op, expected: rule.value };
     });
     const failedChecks = checks.filter(x => x.status === 'FAIL');
+    const skippedChecks = checks.filter(x => x.status === 'SKIP');
     if (failedChecks.length) reasons.push('screening_rules_failed');
+    if (skippedChecks.length) reasons.push('required_metrics_skipped');
 
-    const rankScores = rank.map(item => {
+    const normalized = rank.map(item => {
       const value = metrics[item.metric];
-      if (!numeric(value) || !['asc', 'desc'].includes(item.order)) return null;
-      return { metric: item.metric, value, order: item.order, weight: numeric(item.weight) && item.weight > 0 ? item.weight : 1 };
-    }).filter(Boolean);
-    const score = rankScores.length
-      ? rankScores.reduce((sum, item) => sum + (item.order === 'desc' ? item.value : -item.value) * item.weight, 0) /
-        rankScores.reduce((sum, item) => sum + item.weight, 0)
+      const range = ranges.get(item.metric);
+      if (!numeric(value) || !range) return null;
+      const raw = range.max === range.min ? 1 : (value - range.min) / (range.max - range.min);
+      return { metric: item.metric, score: item.order === 'desc' ? raw : 1 - raw, weight: item.weight ?? 1 };
+    });
+    const rankIncomplete = normalized.some(x => x === null);
+    if (rankIncomplete && rank.length) reasons.push('ranking_metric_missing');
+    const usable = normalized.filter(Boolean);
+    const score = usable.length === rank.length && rank.length
+      ? usable.reduce((sum, x) => sum + x.score * x.weight, 0) / usable.reduce((sum, x) => sum + x.weight, 0)
       : null;
+
+    const hardFail = reasons.some(x => !['required_metrics_skipped', 'ranking_metric_missing'].includes(x)) || failedChecks.length > 0;
+    const status = hardFail ? 'FAIL' : (skippedChecks.length || rankIncomplete ? 'INCONCLUSIVE' : 'PASS');
     return {
       symbol: company.symbol || null,
       name: typeof company.name === 'string' ? company.name : null,
-      status: reasons.length === 0 && failedChecks.length === 0 ? 'PASS' : 'FAIL',
-      asOf: company.asOf || null,
-      source: company.source || null,
-      reasons,
-      checks,
-      score
+      status, asOf: company.asOf || null, source: company.source || null,
+      reasons, checks, score
     };
   });
 
-  results.sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'PASS' ? -1 : 1;
-    if (a.score === null && b.score === null) return String(a.symbol).localeCompare(String(b.symbol));
-    if (a.score === null) return 1;
-    if (b.score === null) return -1;
-    return b.score - a.score;
-  });
+  const order = { PASS: 0, INCONCLUSIVE: 1, FAIL: 2 };
+  results.sort((a, b) => order[a.status] - order[b.status] ||
+    (a.score === null && b.score === null ? String(a.symbol).localeCompare(String(b.symbol)) :
+      a.score === null ? 1 : b.score === null ? -1 : b.score - a.score));
+
   return {
-    market: 'Tadawul',
-    currency: 'SAR',
+    market: 'Tadawul', currency: 'SAR',
     resultType: 'screening_only_not_a_recommendation',
     screenedAt: new Date(nowMs).toISOString(),
     total: results.length,
     passed: results.filter(x => x.status === 'PASS').length,
+    inconclusive: results.filter(x => x.status === 'INCONCLUSIVE').length,
     failed: results.filter(x => x.status === 'FAIL').length,
     results
   };
