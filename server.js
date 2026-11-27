@@ -177,7 +177,7 @@ app.get('/api/history/:symbol', async (req, res) => {
     res.status(planLimit ? 403 : (error.status === 503 ? 503 : 502)).json({
       error: planLimit ? 'historical_data_plan_required' : 'history_unavailable',
       providerStatus: error.status || null,
-      message: error.message,
+      message: safeProviderMessage(error, 'SAHMK'),
       provider: 'SAHMK',
       tradingEnabled: false
     });
