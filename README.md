@@ -56,7 +56,7 @@ The upstream Trader Skill pack is catalogued in `skills/registry.json`; source a
 - `src/saudi/safety.js` adds a fail-closed market-data quality gate and SAR position-sizing calculator; details: `skills/SAUDI_SAFETY_PRIMITIVES.md`.
 - `src/saudi/screener.js` adds a deterministic Tadawul fundamentals screener with SAR/Tadawul checks, dated source metadata, missing-metric handling and ranking; details: `skills/SAUDI_SCREENER.md`.
 - `src/saudi/analyst.js` compares caller-supplied Saudi quarterly statements year over year, calculates growth and margins, and rejects stale or mismatched periods; details: `skills/SAUDI_ANALYST.md`. It is calculation-only and is not connected to a Saudi fundamentals feed.
-- GitHub Actions workflow `.github/workflows/saudi-skills-tests.yml` pins npm 10.9.2, generates and commits `package-lock.json` once on the integration branch, then uses `npm ci` and runs `npm test` on the integration branch and pull requests.
+- GitHub Actions workflow `.github/workflows/saudi-skills-tests.yml` pins npm 10.9.2, generates and commits `package-lock.json` once on the integration branch, then installs the committed dependency tree with `npm ci` and runs `npm test` on the integration branch and pull requests.
 - Saudi financial data source assessment: `skills/SAUDI_DATA_SOURCES.md` documents SAHMK plan limits and the separate Argaam Fundamentals Sandbox access requirements; no live fundamentals adapter is enabled yet.
 - All skills remain disabled pending Saudi-specific adapters and tests. US-only tax, 13F and Congress-disclosure logic is not applied to Tadawul.
 - Brokerage order submission and automatic execution remain disabled. No new Render secrets are required.
