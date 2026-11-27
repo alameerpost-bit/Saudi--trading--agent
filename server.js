@@ -1,14 +1,21 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { screenTadawulCompanies } from './src/saudi/screener.js';
+import { createFixedWindowRateLimiter, normalizeSahmkBaseUrl, safeProviderMessage } from './src/saudi/http-security.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.SAHMK_API_KEY;
-const ARGAAM_API_KEY = process.env.ARGAAM_API_KEY;
+const ARGAAM_API_KEY = process.env.ARGAAM_API_KEY; // Market Data Sandbox credential
+const ARGAAM_FUNDAMENTALS_API_KEY = process.env.ARGAAM_FUNDAMENTALS_API_KEY; // Fundamentals Sandbox credential
 const ARGAAM_BASE = 'https://api-sandbox.argaam.com/api/v1.1';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
-const BASE = (process.env.SAHMK_BASE_URL || 'https://api.sahmk.sa/api/v1').replace(/\/+$/, '');
+const BASE = normalizeSahmkBaseUrl(process.env.SAHMK_BASE_URL);
+const SKILL_REGISTRY = JSON.parse(readFileSync(new URL('./skills/registry.json', import.meta.url), 'utf8'));
 
 const allowedOrigins = new Set([
   'https://alameerpost-bit.github.io',
@@ -19,14 +26,52 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || allowedOrigins.has(origin)) return callback(null, true);
   return callback(null, false);
 } }));
-app.use(express.json());
+app.set('trust proxy', 1); // Trust only Render's single reverse proxy for client IP/HTTPS metadata.
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+  });
+  if (req.secure) res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+app.use(express.json({ limit: '256kb' }));
+app.use('/api', createFixedWindowRateLimiter({ windowMs: 15 * 60 * 1000, max: 180 }));
+app.use(['/api/market', '/api/quote', '/api/history', '/api/argaam'], createFixedWindowRateLimiter({ windowMs: 60 * 1000, max: 30 }));
 app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
+app.get('/api/skills', (_req, res) => res.json({ ...SKILL_REGISTRY, retrievedAt: new Date().toISOString() }));
+
+app.post('/api/skills/screen', (req, res) => {
+  const { companies, rules, rank, missing, maxAgeDays } = req.body || {};
+  if (!Array.isArray(companies) || companies.length > 500) {
+    return res.status(400).json({ error: 'invalid_companies', message: 'Provide an array of up to 500 company records.' });
+  }
+  if (!Array.isArray(rules) || rules.length === 0 || rules.length > 30) {
+    return res.status(400).json({ error: 'invalid_rules', message: 'Provide between 1 and 30 screening rules.' });
+  }
+  if (rank !== undefined && (!Array.isArray(rank) || rank.length > 10)) {
+    return res.status(400).json({ error: 'invalid_rank', message: 'Rank must contain no more than 10 metrics.' });
+  }
+  try {
+    const result = screenTadawulCompanies(companies, { rules, rank, missing, maxAgeDays });
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: 'invalid_screen_request', message: error.message });
+  }
+});
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
   provider: 'SAHMK',
   apiKeyConfigured: Boolean(API_KEY),
   argaamSandboxConfigured: Boolean(ARGAAM_API_KEY),
+  argaamFundamentalsSandboxConfigured: Boolean(ARGAAM_FUNDAMENTALS_API_KEY),
   tradingEnabled: false,
   serverTime: new Date().toISOString()
 }));
@@ -81,7 +126,7 @@ app.get('/api/health/provider', async (_req, res) => {
       provider: 'SAHMK',
       authenticated: false,
       providerStatus: error.status || null,
-      message: error.message,
+      message: safeProviderMessage(error, 'SAHMK'),
       tradingEnabled: false
     });
   }
@@ -92,7 +137,7 @@ app.get('/api/market/summary', async (_req, res) => {
     const data = await providerGet('/market/summary/?index=TASI');
     res.json({ provider: 'SAHMK', retrievedAt: new Date().toISOString(), data });
   } catch (error) {
-    res.status(error.status === 503 ? 503 : 502).json({ error: 'market_data_unavailable', providerStatus: error.status || null, message: error.message });
+    res.status(error.status === 503 ? 503 : 502).json({ error: 'market_data_unavailable', providerStatus: error.status || null, message: safeProviderMessage(error, 'SAHMK') });
   }
 });
 
@@ -103,7 +148,7 @@ app.get('/api/quote/:symbol', async (req, res) => {
     const data = await providerGet(`/quote/${encodeURIComponent(symbol)}/`);
     res.json({ provider: 'SAHMK', symbol, retrievedAt: new Date().toISOString(), data });
   } catch (error) {
-    res.status(error.status === 503 ? 503 : 502).json({ error: 'quote_unavailable', providerStatus: error.status || null, message: error.message });
+    res.status(error.status === 503 ? 503 : 502).json({ error: 'quote_unavailable', providerStatus: error.status || null, message: safeProviderMessage(error, 'SAHMK') });
   }
 });
 
@@ -136,7 +181,7 @@ app.get('/api/history/:symbol', async (req, res) => {
     res.status(planLimit ? 403 : (error.status === 503 ? 503 : 502)).json({
       error: planLimit ? 'historical_data_plan_required' : 'history_unavailable',
       providerStatus: error.status || null,
-      message: error.message,
+      message: safeProviderMessage(error, 'SAHMK'),
       provider: 'SAHMK',
       tradingEnabled: false
     });
@@ -157,14 +202,15 @@ app.get('/api/argaam/companies', async (req, res) => {
   });
   try {
     const response = await fetch(`${ARGAAM_BASE}/companies?${params.toString()}`, {
-      headers: { apikey: ARGAAM_API_KEY, Accept: 'application/json' }
+      headers: { apikey: ARGAAM_API_KEY, Accept: 'application/json' },
+      signal: AbortSignal.timeout(15000)
     });
     const body = await response.text();
     if (!response.ok) {
       return res.status(502).json({
         error: 'argaam_sandbox_unavailable',
         status: response.status,
-        message: body.slice(0, 300)
+        message: 'Argaam data is temporarily unavailable.'
       });
     }
     let data;
@@ -172,7 +218,7 @@ app.get('/api/argaam/companies', async (req, res) => {
     catch { throw new Error('Argaam response was not valid JSON'); }
     res.json({ provider: 'ARGAAM_SANDBOX', retrievedAt: new Date().toISOString(), page, pageSize, data });
   } catch (error) {
-    res.status(502).json({ error: 'argaam_request_failed', message: error.message });
+    res.status(502).json({ error: 'argaam_request_failed', message: safeProviderMessage(error, 'Argaam') });
   }
 });
 
@@ -190,11 +236,12 @@ async function argaamGet(path, params = {}) {
   }
   const query = params instanceof URLSearchParams ? params.toString() : new URLSearchParams(params).toString();
   const response = await fetch(`${ARGAAM_BASE}${path}${query ? `?${query}` : ''}`, {
-    headers: { apikey: ARGAAM_API_KEY, Accept: 'application/json' }
+    headers: { apikey: ARGAAM_API_KEY, Accept: 'application/json' },
+    signal: AbortSignal.timeout(15000)
   });
   const body = await response.text();
   if (!response.ok) {
-    const error = new Error(body.slice(0, 300) || `Argaam returned HTTP ${response.status}`);
+    const error = new Error(`Argaam returned HTTP ${response.status}`);
     error.status = response.status;
     error.requestId = response.headers.get('x-request-id') || null;
     throw error;
@@ -218,7 +265,7 @@ function argaamError(res, error) {
     error: error.status ? 'argaam_sandbox_unavailable' : 'argaam_request_failed',
     status: error.status || null,
     requestId: error.requestId || null,
-    message: error.message
+    message: safeProviderMessage(error, 'Argaam')
   });
 }
 
@@ -263,4 +310,74 @@ app.get('/api/argaam/market/summary', async (_req, res) => {
   } catch (error) { argaamError(res, error); }
 });
 
-app.listen(PORT, () => console.log(`Saudi Trading Agent API listening on ${PORT}`));
+
+async function argaamFundamentalsGet(path, params = {}) {
+  if (!ARGAAM_FUNDAMENTALS_API_KEY) {
+    const error = new Error('ARGAAM_FUNDAMENTALS_API_KEY is not configured');
+    error.status = 503;
+    throw error;
+  }
+  const query = params instanceof URLSearchParams ? params.toString() : new URLSearchParams(params).toString();
+  let response;
+  try {
+    response = await fetch(`https://api-sandbox.argaam.com/api/v1.1${path}${query ? `?${query}` : ''}`, {
+      headers: { apikey: ARGAAM_FUNDAMENTALS_API_KEY, Accept: 'application/json' },
+      signal: AbortSignal.timeout(15000)
+    });
+  } catch (cause) {
+    const error = new Error(cause?.name === 'TimeoutError'
+      ? 'Argaam Fundamentals request timed out after 15 seconds.'
+      : 'Could not connect to the Argaam Fundamentals Sandbox.');
+    error.cause = cause;
+    throw error;
+  }
+  const body = await response.text();
+  if (!response.ok) {
+    const error = new Error(`Argaam Fundamentals returned HTTP ${response.status}`);
+    error.status = response.status;
+    error.requestId = response.headers.get('x-request-id') || null;
+    throw error;
+  }
+  let parsed;
+  try { parsed = body ? JSON.parse(body) : {}; }
+  catch { throw new Error('Argaam Fundamentals response was not valid JSON.'); }
+  return parsed;
+}
+
+app.get('/api/argaam/fundamentals/:symbol', async (req, res) => {
+  const symbol = validSymbol(req, res);
+  if (!symbol) return;
+  const period = String(req.query.period || 'quarterly').trim().toLowerCase();
+  if (!['quarterly', 'annual', 'auto'].includes(period)) {
+    return res.status(400).json({ error: 'invalid_period', message: 'period must be quarterly, annual, or auto.' });
+  }
+  try {
+    const params = new URLSearchParams({ marketId: '1', period });
+    const data = await argaamFundamentalsGet(
+      `/companies/${encodeURIComponent(symbol)}/financials`,
+      params
+    );
+    res.json({
+      provider: 'ARGAAM_FUNDAMENTALS_SANDBOX',
+      symbol,
+      marketId: 1,
+      period,
+      retrievedAt: new Date().toISOString(),
+      normalization: 'raw_provider_response_not_yet_mapped',
+      data
+    });
+  } catch (error) {
+    res.status(error.status === 503 ? 503 : 502).json({
+      error: error.status ? 'argaam_fundamentals_unavailable' : 'argaam_fundamentals_request_failed',
+      status: error.status || null,
+      requestId: error.requestId || null,
+      message: safeProviderMessage(error, 'Argaam Fundamentals')
+    });
+  }
+});
+
+export { app };
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  app.listen(PORT, () => console.log(`Saudi Trading Agent API listening on ${PORT}`));
+}

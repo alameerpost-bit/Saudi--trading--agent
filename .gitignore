@@ -1,0 +1,15 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and generated output
+node_modules/
+coverage/
+dist/
+build/
+*.log
+npm-debug.log*
+.DS_Store
