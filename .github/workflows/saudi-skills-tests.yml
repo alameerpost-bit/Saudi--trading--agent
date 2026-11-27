@@ -9,11 +9,38 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  lockfile:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/saudi-skills-integration'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Pin npm version
+        run: npm install --global npm@10.9.2
+      - name: Generate and commit lockfile when missing
+        run: |
+          if [ ! -f package-lock.json ]; then
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "build: add reproducible npm lockfile"
+            git push
+          fi
+
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository and pinned skill submodules
         uses: actions/checkout@v4
@@ -25,20 +52,10 @@ jobs:
           node-version: 20
       - name: Pin npm version
         run: npm install --global npm@10.9.2
-      - name: Generate lockfile when missing
+      - name: Generate temporary lockfile when missing
         run: |
           if [ ! -f package-lock.json ]; then
             npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          fi
-      - name: Commit generated lockfile on integration-branch pushes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/saudi-skills-integration'
-        run: |
-          if [ -f package-lock.json ] && ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "build: add reproducible npm lockfile"
-            git push
           fi
       - name: Install exact dependency tree
         run: npm ci
